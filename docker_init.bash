@@ -194,8 +194,16 @@ chown_home_hermeswebui() {
   # source — prune the entire hermes-agent path from the chown walk so a
   # read-only or partially-read-only mount doesn't break the rest of the home
   # ownership alignment.
+  # Local patch (not upstream): also prune .git and backups under .hermes.
+  # The .hermes bind mount surfaces host-owned files (zcdeng/501) that the
+  # macOS bind-mount layer refuses to chown to 10000:10000. v0.51 made the chown
+  # walk fatal (it was best-effort in v0.50), so without these extra prunes
+  # WebUI exits with "Failed to set owner of /home/hermeswebui" on every start.
+  # WebUI never writes to .git or backups — read-only access is sufficient.
   find /home/hermeswebui \
-    -path "/home/hermeswebui/.hermes/hermes-agent" -prune \
+    \( -path "/home/hermeswebui/.hermes/hermes-agent" \
+       -o -path "/home/hermeswebui/.hermes/.git" \
+       -o -path "/home/hermeswebui/.hermes/backups" \) -prune \
     -o -exec chown -h "${WANTED_UID}:${WANTED_GID}" {} +
 }
 
